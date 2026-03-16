@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply min-h-screen bg-gray-50;
+}
+
+.glass {
+  @apply bg-white backdrop-blur-xl border border-gray-200 shadow-sm;
+}
+
+.glass-dark {
+  @apply bg-[#532E8E] backdrop-blur-xl border border-[#532E8E];
+}
+
+.glass-hover {
+  @apply hover:bg-gray-50 transition-all duration-200;
+}

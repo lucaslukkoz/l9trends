@@ -1,0 +1,69 @@
+
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: linslins1
+      MYSQL_DATABASE: l9trends
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - l9trends-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - l9trends-network
+
+  backend:
+    build: ./backend
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - mysql
+      - redis
+    env_file:
+      - ./backend/.env
+    networks:
+      - l9trends-network
+
+  worker:
+    build: ./backend
+    command: ["npx", "ts-node-dev", "--respawn", "--transpile-only", "src/worker.ts"]
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - mysql
+      - redis
+    env_file:
+      - ./backend/.env
+    networks:
+      - l9trends-network
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    env_file:
+      - ./frontend/.env.local
+    networks:
+      - l9trends-network
+
+volumes:
+  mysql_data:
+
+networks:
+  l9trends-network:
+    driver: bridge
