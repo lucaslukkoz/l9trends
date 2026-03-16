@@ -58,6 +58,8 @@ export async function syncImapAccount(account: EmailAccount): Promise<void> {
       )) {
         const uid = msg.uid;
 
+        if (!msg.source) continue;
+
         if (uid > highestUid) {
           highestUid = uid;
         }

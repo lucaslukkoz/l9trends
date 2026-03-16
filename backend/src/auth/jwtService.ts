@@ -4,6 +4,8 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 
+const jwtAlgorithm = 'RS256'
+
 const KEYS_DIR = path.resolve(__dirname, '../../keys');
 const PRIVATE_KEY_PATH = path.join(KEYS_DIR, 'private.key');
 const PUBLIC_KEY_PATH = path.join(KEYS_DIR, 'public.key');
@@ -63,7 +65,7 @@ export interface JwtPayload {
 export function signToken(payload: JwtPayload): string {
   return jwt.sign(payload, getPrivateKey(), {
     algorithm: 'RS256',
-    expiresIn: env.JWT_EXPIRES_IN,
+    expiresIn: env.JWT_EXPIRES_IN as unknown as jwt.SignOptions['expiresIn'],
   });
 }
 
