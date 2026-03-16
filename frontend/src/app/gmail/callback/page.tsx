@@ -1,11 +1,12 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 
-export default function GmailCallbackPage() {
+function GmailCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { handleOAuthCallback } = useAuth();
@@ -31,7 +32,7 @@ export default function GmailCallbackPage() {
       <div className="flex items-center justify-center min-h-screen px-4">
         <div className="w-full max-w-md glass rounded-2xl p-8 text-center">
           <div className="text-lg font-medium text-red-600 mb-4">
-            Falha na autentica&ccedil;&atilde;o. Tente novamente.
+            Falha na autenticação. Tente novamente.
           </div>
           <Link
             href="/login"
@@ -53,5 +54,24 @@ export default function GmailCallbackPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function GmailCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen px-4">
+          <div className="w-full max-w-md glass rounded-2xl p-8 text-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#532E8E] border-t-transparent mx-auto mb-4" />
+            <div className="text-lg font-medium text-gray-900">
+              Carregando...
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <GmailCallbackContent />
+    </Suspense>
   );
 }
