@@ -63,6 +63,7 @@ export async function getUserProfile(
   avatarUrl: string | null;
   gmailConnected: boolean;
   gmailEmail: string | null;
+  accounts: EmailAccount[];
 }> {
   const user = await User.findByPk(userId, {
     include: [{ model: GmailToken }],

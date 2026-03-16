@@ -40,7 +40,7 @@ export async function sendEmail(
   body: string,
 ) {
   const client = await getAuthenticatedClient(userId);
-  const result = await sendMessage(client, to, subject, body);
+  const result = await sendMessage(client, { to, subject, body });
 
   // Invalidate inbox cache
   await invalidatePattern(`inbox:${userId}:*`);
