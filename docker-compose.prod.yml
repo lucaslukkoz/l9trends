@@ -27,8 +27,6 @@ services:
       context: ./backend
       dockerfile: Dockerfile.prod
     restart: unless-stopped
-    ports:
-      - "3001:3001"
     volumes:
       - backend_keys:/app/keys
       - backend_uploads:/app/uploads
