@@ -43,16 +43,20 @@ function findBodyPart(
 
 function extractAttachments(
   payload: gmail_v1.Schema$MessagePart,
-): Array<{ filename: string; mimeType: string; size: number }> {
+): Array<{ id: number; filename: string; mimeType: string; size: number }> {
   const attachments: Array<{
+    id: number;
     filename: string;
     mimeType: string;
     size: number;
   }> = [];
 
+  let idCounter = 0;
+
   function walk(part: gmail_v1.Schema$MessagePart) {
     if (part.filename && part.filename.length > 0 && part.body) {
       attachments.push({
+        id: idCounter++,
         filename: part.filename,
         mimeType: part.mimeType || 'application/octet-stream',
         size: part.body.size || 0,
@@ -144,7 +148,7 @@ export async function getMessage(
   body: string;
   date: string;
   labels: string[];
-  attachments: Array<{ filename: string; mimeType: string; size: number }>;
+  attachments: Array<{ id: number; filename: string; mimeType: string; size: number }>;
 }> {
   const gmail = getGmailClient(client);
 

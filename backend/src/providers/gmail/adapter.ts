@@ -98,38 +98,17 @@ export class GmailAdapter implements IEmailProvider {
     await this.ensureValidToken();
     const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
 
-    // For Gmail, the attachmentId is the Gmail attachment ID stored in the part body
-    // We need to get the message first to find the attachment metadata
+    // Get the message to find attachment parts
     const msgRes = await gmail.users.messages.get({
       userId: 'me',
       id: messageId,
       format: 'full',
     });
 
-    // Find the attachment part by matching our DB attachment ID
-    // We'll look through all parts for the one with the matching attachment
-    const parts = msgRes.data.payload?.parts || [];
-    const findAttachment = (partsList: typeof parts): { gmailAttId: string; filename: string; mimeType: string } | null => {
-      for (const part of partsList) {
-        if (part.body?.attachmentId && part.filename) {
-          return {
-            gmailAttId: part.body.attachmentId,
-            filename: part.filename,
-            mimeType: part.mimeType || 'application/octet-stream',
-          };
-        }
-        if (part.parts) {
-          const found = findAttachment(part.parts);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
-    // Get all attachments and pick by index (attachmentId from DB)
+    // Collect all attachment parts
     const allAttachments: { gmailAttId: string; filename: string; mimeType: string }[] = [];
-    const collectAttachments = (partsList: typeof parts) => {
-      for (const part of partsList) {
+    const collectAttachments = (parts: any[]) => {
+      for (const part of parts) {
         if (part.body?.attachmentId && part.filename) {
           allAttachments.push({
             gmailAttId: part.body.attachmentId,
@@ -140,10 +119,11 @@ export class GmailAdapter implements IEmailProvider {
         if (part.parts) collectAttachments(part.parts);
       }
     };
-    collectAttachments(parts);
+    collectAttachments(msgRes.data.payload?.parts || []);
 
-    // Use first attachment as fallback, or find by contentId if stored
-    const att = allAttachments[0];
+    // Find attachment by index (attachmentId is the index from extractAttachments)
+    const idx = parseInt(attachmentId, 10);
+    const att = allAttachments[idx];
     if (!att) throw new Error('Attachment not found');
 
     const attRes = await gmail.users.messages.attachments.get({
