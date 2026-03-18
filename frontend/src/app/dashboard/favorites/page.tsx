@@ -53,7 +53,7 @@ export default function FavoritesPage() {
       await toggleFavorite(activeAccountId, emailId);
       setEmails((prev) => prev.filter((e) => e.id !== emailId));
     } catch {
-      // silent
+      alert("Falha ao remover dos favoritos.");
     }
   };
 

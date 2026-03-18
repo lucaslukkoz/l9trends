@@ -43,7 +43,7 @@ const sendEmailSchema = z.object({
   inReplyTo: z.string().optional(),
   references: z.string().optional(),
 });
-router.post('/:accountId/emails/send', emailAttachmentUpload.array('attachments', 10), controller.sendEmail);
+router.post('/:accountId/emails/send', emailAttachmentUpload.array('attachments', 10), validate(sendEmailSchema), controller.sendEmail);
 router.get('/:accountId/emails/:emailId/attachments/:attachmentId', controller.getAttachment);
 router.patch('/:accountId/emails/:emailId/read', controller.markEmailRead);
 router.delete('/:accountId/emails/:emailId', controller.deleteEmail);

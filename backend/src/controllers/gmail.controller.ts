@@ -29,7 +29,8 @@ export async function callback(
     }
 
     const { token } = await exchangeCodeForTokens(code);
-    res.redirect(`http://localhost:3000/gmail/callback?token=${token}`);
+    const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/gmail/callback?token=${token}`);
   } catch (error) {
     next(error);
   }

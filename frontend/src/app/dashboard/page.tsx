@@ -87,6 +87,7 @@ export default function DashboardPage() {
   }, [activeAccountId, fetchInbox]);
 
   useEffect(() => {
+    setSearchQuery("");
     if (activeAccountId) {
       loadInbox();
     } else {

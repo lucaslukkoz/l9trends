@@ -55,7 +55,7 @@ export default function DraftsPage() {
       await deleteDraft(activeAccountId, draftId);
       setDrafts((prev) => prev.filter((d) => d.id !== draftId));
     } catch {
-      // silent
+      alert("Falha ao excluir rascunho.");
     }
   };
 
