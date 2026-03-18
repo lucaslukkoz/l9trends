@@ -24,8 +24,7 @@ export default function AttachmentPreviewModal({
   const isPdf = mimeType === "application/pdf";
   const isText = mimeType.startsWith("text/");
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("l9trends_token") : null;
-  const authUrl = (url: string) => `${url}${url.includes("?") ? "&" : "?"}token=${token}`;
+  // Token is already included in previewUrl and downloadUrl by getAttachmentUrl
 
   return (
     <div
@@ -61,7 +60,7 @@ export default function AttachmentPreviewModal({
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#532E8E] border-t-transparent" />
               )}
               <img
-                src={authUrl(previewUrl)}
+                src={previewUrl}
                 alt={filename}
                 className={`max-w-full max-h-[60vh] rounded-lg ${loading ? "hidden" : ""}`}
                 onLoad={() => setLoading(false)}
@@ -72,7 +71,7 @@ export default function AttachmentPreviewModal({
 
           {isPdf && (
             <iframe
-              src={authUrl(previewUrl)}
+              src={previewUrl}
               className="w-full h-[60vh] rounded-lg border border-gray-200"
               title={filename}
             />
@@ -80,7 +79,7 @@ export default function AttachmentPreviewModal({
 
           {isText && (
             <iframe
-              src={authUrl(previewUrl)}
+              src={previewUrl}
               className="w-full h-[60vh] rounded-lg border border-gray-200 bg-gray-50"
               title={filename}
             />
@@ -100,7 +99,7 @@ export default function AttachmentPreviewModal({
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-200 flex items-center gap-3">
           <a
-            href={authUrl(downloadUrl)}
+            href={downloadUrl}
             download={filename}
             className="rounded-xl bg-gradient-to-r from-[#532E8E] to-[#7B5EA7] px-5 py-2.5 text-sm font-medium text-white hover:from-[#3D2268] hover:to-[#532E8E] transition-all duration-200 shadow-md inline-flex items-center gap-2"
           >

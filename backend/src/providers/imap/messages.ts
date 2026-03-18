@@ -365,6 +365,18 @@ export async function getAttachmentFromImap(
 
   if (!attachment) throw new NotFoundError('Attachment not found');
 
+  // Serve from disk if file was stored locally (sent emails)
+  if (attachment.filePath) {
+    const fs = await import('fs');
+    if (!fs.existsSync(attachment.filePath)) throw new NotFoundError('Attachment file not found on disk');
+    const content = fs.readFileSync(attachment.filePath);
+    return {
+      content: Buffer.from(content),
+      mimeType: attachment.mimeType || 'application/octet-stream',
+      filename: attachment.filename,
+    };
+  }
+
   const email = (attachment as any).email as Email;
 
   // Fetch the raw message from IMAP and parse attachments

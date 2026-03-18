@@ -57,8 +57,13 @@ export function useEmails() {
 
   const getAttachmentUrl = useCallback((accountId: number, emailId: string, attachmentId: number, preview?: boolean) => {
     const base = (api.defaults.baseURL || 'http://localhost:3001/api');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('l9trends_token') : null;
     const url = `${base}/accounts/${accountId}/emails/${emailId}/attachments/${attachmentId}`;
-    return preview ? `${url}?preview=true` : url;
+    const params = new URLSearchParams();
+    if (preview) params.set('preview', 'true');
+    if (token) params.set('token', token);
+    const qs = params.toString();
+    return qs ? `${url}?${qs}` : url;
   }, []);
 
   const searchEmails = useCallback(async (accountId: number, query: string, pageToken?: string) => {

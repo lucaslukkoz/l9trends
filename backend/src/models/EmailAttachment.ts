@@ -8,12 +8,13 @@ export interface EmailAttachmentAttributes {
   mimeType: string;
   size: number;
   contentId: string | null;
+  filePath: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 export interface EmailAttachmentCreationAttributes
-  extends Optional<EmailAttachmentAttributes, 'id' | 'size' | 'contentId' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<EmailAttachmentAttributes, 'id' | 'size' | 'contentId' | 'filePath' | 'createdAt' | 'updatedAt'> {}
 
 class EmailAttachment
   extends Model<EmailAttachmentAttributes, EmailAttachmentCreationAttributes>
@@ -25,6 +26,7 @@ class EmailAttachment
   declare mimeType: string;
   declare size: number;
   declare contentId: string | null;
+  declare filePath: string | null;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 }
@@ -58,6 +60,11 @@ EmailAttachment.init(
     },
     contentId: {
       type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: null,
+    },
+    filePath: {
+      type: DataTypes.STRING(500),
       allowNull: true,
       defaultValue: null,
     },

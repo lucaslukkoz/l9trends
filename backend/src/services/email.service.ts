@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 import { getEmailProvider } from '../providers/email.factory';
 import { SendMessageOptions } from '../providers/email.interface';
 import { getAccountForUser } from './account.service';
@@ -5,6 +8,7 @@ import { getCachedOrFetch, invalidatePattern, invalidateKey } from './cache.serv
 import { enqueueSync } from '../queues/email-sync.queue';
 import { listTrashedFromDb, listSentFromDb, permanentDeleteFromDb, restoreFromTrash, markEmailAsRead, listFavoritesFromDb, toggleFavoriteInDb, searchMessagesFromDb } from '../providers/imap/messages';
 import Email from '../models/Email';
+import EmailAttachment from '../models/EmailAttachment';
 import { Draft } from '../models';
 
 export async function getInbox(userId: number, accountId: number, pageToken?: string, maxResults?: number) {
@@ -31,7 +35,7 @@ export async function sendEmail(userId: number, accountId: number, options: Send
   await invalidatePattern(`inbox:${accountId}:*`);
 
   // Store sent email in database
-  await Email.create({
+  const savedEmail = await Email.create({
     accountId: account.id,
     messageUid: result.messageId || `sent-${Date.now()}`,
     threadId: result.threadId || null,
@@ -45,6 +49,30 @@ export async function sendEmail(userId: number, accountId: number, options: Send
     folder: 'sent',
     hasAttachments: !!(options.attachments && options.attachments.length > 0),
   });
+
+  // Store attachments to disk and create DB records
+  if (options.attachments && options.attachments.length > 0) {
+    const attachmentsDir = path.join(process.cwd(), 'uploads', 'attachments');
+    fs.mkdirSync(attachmentsDir, { recursive: true });
+
+    await EmailAttachment.bulkCreate(
+      options.attachments.map((att) => {
+        let filePath: string | null = null;
+        if (att.content) {
+          const uniqueName = `${savedEmail.id}-${crypto.randomUUID()}-${att.filename}`;
+          filePath = path.join(attachmentsDir, uniqueName);
+          fs.writeFileSync(filePath, att.content);
+        }
+        return {
+          emailId: savedEmail.id,
+          filename: att.filename,
+          mimeType: att.contentType || 'application/octet-stream',
+          size: att.content ? att.content.length : 0,
+          filePath,
+        };
+      })
+    );
+  }
 
   // Delete draft if sent from a draft
   if (draftId) {
