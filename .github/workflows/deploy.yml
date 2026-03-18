@@ -48,34 +48,28 @@ jobs:
             git pull origin main
 
             echo "==> Writing root .env"
-            cat > .env << ENVEOF
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            DB_NAME=${{ secrets.DB_NAME }}
-            ENVEOF
+            printf '%s\n' "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" "DB_NAME=${{ secrets.DB_NAME }}" > .env
 
             echo "==> Writing backend/.env.production"
-            cat > backend/.env.production << ENVEOF
-            PORT=3001
-            NODE_ENV=production
-            DB_HOST=mysql
-            DB_PORT=3306
-            DB_NAME=${{ secrets.DB_NAME }}
-            DB_USER=root
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            REDIS_HOST=redis
-            REDIS_PORT=6379
-            JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
-            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-            GOOGLE_REDIRECT_URI=http://${{ secrets.EC2_HOST }}/api/gmail/callback
-            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
-            CORS_ORIGIN=http://${{ secrets.EC2_HOST }}
-            ENVEOF
+            printf '%s\n' \
+              "PORT=3001" \
+              "NODE_ENV=production" \
+              "DB_HOST=mysql" \
+              "DB_PORT=3306" \
+              "DB_NAME=${{ secrets.DB_NAME }}" \
+              "DB_USER=root" \
+              "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" \
+              "REDIS_HOST=redis" \
+              "REDIS_PORT=6379" \
+              "JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}" \
+              "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" \
+              "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+              "GOOGLE_REDIRECT_URI=http://${{ secrets.EC2_HOST }}/api/gmail/callback" \
+              "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}" \
+              "CORS_ORIGIN=http://${{ secrets.EC2_HOST }}" > backend/.env.production
 
             echo "==> Writing frontend/.env.production"
-            cat > frontend/.env.production << ENVEOF
-            NEXT_PUBLIC_API_URL=http://${{ secrets.EC2_HOST }}/api
-            ENVEOF
+            printf '%s\n' "NEXT_PUBLIC_API_URL=http://${{ secrets.EC2_HOST }}/api" > frontend/.env.production
 
             echo "==> Rebuilding and restarting containers"
             docker compose -f docker-compose.prod.yml up --build -d
