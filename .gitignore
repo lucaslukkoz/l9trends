@@ -1,2 +1,6 @@
 .env
 .env.local
+.env.production
+backend/.env.production
+frontend/.env.production
+*.pem
