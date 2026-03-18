@@ -8,8 +8,7 @@ async function start() {
   ensureKeys();
   await connectDatabase();
 
-  const syncOptions = env.NODE_ENV === 'development' ? { alter: true } : {};
-  await sequelize.sync(syncOptions);
+  await sequelize.sync({ alter: true });
   console.log('Database synced.');
 
   app.listen(env.PORT, () => {
