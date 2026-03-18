@@ -44,6 +44,23 @@ export async function getEmails(req: Request, res: Response, next: NextFunction)
   } catch (err) { next(err); }
 }
 
+export async function searchEmails(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { q, pageToken } = req.query;
+    if (!q || typeof q !== 'string') {
+      res.json({ emails: [], nextPageToken: null, resultSizeEstimate: 0 });
+      return;
+    }
+    const result = await emailService.searchEmails(
+      req.user!.id,
+      Number(req.params.accountId),
+      q,
+      pageToken as string | undefined
+    );
+    res.json(result);
+  } catch (err) { next(err); }
+}
+
 export async function getEmail(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await emailService.getEmail(

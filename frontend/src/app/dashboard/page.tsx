@@ -14,7 +14,7 @@ import ComposeModal from "@/components/ComposeModal";
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { fetchInbox, fetchEmail, deleteEmail, markAsRead, toggleFavorite } = useEmails();
+  const { fetchInbox, fetchEmail, deleteEmail, markAsRead, toggleFavorite, searchEmails } = useEmails();
   const { triggerSync } = useAccounts();
   const { accounts, activeAccountId } = useAccountContext();
   const [emails, setEmails] = useState<EmailSummary[]>([]);
@@ -28,6 +28,9 @@ export default function DashboardPage() {
   const [composeMode, setComposeMode] = useState<'new' | 'reply' | 'forward' | null>(null);
   const [composeEmail, setComposeEmail] = useState<EmailDetail | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<EmailSummary[] | null>(null);
+  const [searchNextPageToken, setSearchNextPageToken] = useState<string | null>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [inboxWidth, setInboxWidth] = useState(420);
   const isResizing = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -59,15 +62,31 @@ export default function DashboardPage() {
 
   const activeAccount = accounts.find((a) => a.id === activeAccountId);
 
-  // Filter emails by search query
-  const filteredEmails = searchQuery
-    ? emails.filter(
-        (e) =>
-          e.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          e.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          e.snippet.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : emails;
+  // Server-side search with debounce
+  useEffect(() => {
+    if (!activeAccountId) return;
+    if (!searchQuery.trim()) {
+      setSearchResults(null);
+      setSearchNextPageToken(null);
+      return;
+    }
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const data = await searchEmails(activeAccountId, searchQuery.trim());
+        setSearchResults(data.emails);
+        setSearchNextPageToken(data.nextPageToken);
+      } catch {
+        setSearchResults([]);
+        setSearchNextPageToken(null);
+      }
+    }, 300);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery, activeAccountId, searchEmails]);
+
+  const filteredEmails = searchResults !== null ? searchResults : emails;
 
   const loadInbox = useCallback(async () => {
     if (!activeAccountId) return;
@@ -119,12 +138,21 @@ export default function DashboardPage() {
   }, []);
 
   const handleLoadMore = async () => {
-    if (!nextPageToken || !activeAccountId) return;
+    if (!activeAccountId) return;
+    const isSearchMode = searchResults !== null;
+    const token = isSearchMode ? searchNextPageToken : nextPageToken;
+    if (!token) return;
     setLoadingMore(true);
     try {
-      const data = await fetchInbox(activeAccountId, nextPageToken);
-      setEmails((prev) => [...prev, ...data.emails]);
-      setNextPageToken(data.nextPageToken);
+      if (isSearchMode) {
+        const data = await searchEmails(activeAccountId, searchQuery.trim(), token);
+        setSearchResults((prev) => [...(prev || []), ...data.emails]);
+        setSearchNextPageToken(data.nextPageToken);
+      } else {
+        const data = await fetchInbox(activeAccountId, token);
+        setEmails((prev) => [...prev, ...data.emails]);
+        setNextPageToken(data.nextPageToken);
+      }
     } finally {
       setLoadingMore(false);
     }
@@ -308,7 +336,7 @@ export default function DashboardPage() {
             onToggleFavorite={handleToggleFavorite}
           />
         </div>
-        {nextPageToken && (
+        {(searchResults !== null ? searchNextPageToken : nextPageToken) && (
           <div className="p-3 border-t border-gray-200">
             <button
               onClick={handleLoadMore}

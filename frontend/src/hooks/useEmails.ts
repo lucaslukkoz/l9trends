@@ -61,6 +61,13 @@ export function useEmails() {
     return preview ? `${url}?preview=true` : url;
   }, []);
 
+  const searchEmails = useCallback(async (accountId: number, query: string, pageToken?: string) => {
+    const params: Record<string, string> = { q: query };
+    if (pageToken) params.pageToken = pageToken;
+    const res = await api.get<EmailListResponse>(`/accounts/${accountId}/emails/search`, { params });
+    return res.data;
+  }, []);
+
   const toggleFavorite = useCallback(async (accountId: number, emailId: string) => {
     const res = await api.patch<{ isFavorite: boolean }>(`/accounts/${accountId}/emails/${emailId}/favorite`);
     return res.data;
@@ -73,5 +80,5 @@ export function useEmails() {
     return res.data;
   }, []);
 
-  return { fetchInbox, fetchEmail, sendEmail, deleteEmail, markAsRead, fetchSent, toggleFavorite, fetchFavorites, getAttachmentUrl };
+  return { fetchInbox, fetchEmail, sendEmail, deleteEmail, markAsRead, fetchSent, searchEmails, toggleFavorite, fetchFavorites, getAttachmentUrl };
 }

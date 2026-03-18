@@ -32,6 +32,7 @@ router.post('/imap', validate(addImapSchema), controller.addImapAccount);
 
 // Account-scoped email operations
 router.get('/:accountId/emails', controller.getEmails);
+router.get('/:accountId/emails/search', controller.searchEmails);
 router.get('/:accountId/emails/:emailId', controller.getEmail);
 
 const sendEmailSchema = z.object({

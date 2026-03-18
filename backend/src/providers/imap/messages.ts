@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { Op } from 'sequelize';
 import { decrypt } from '../../utils/encryption';
 import { NotFoundError } from '../../utils/errors';
 import EmailAccount from '../../models/EmailAccount';
@@ -42,6 +43,52 @@ export async function listMessagesFromDb(
     })),
     nextPageToken,
     resultSizeEstimate,
+  };
+}
+
+export async function searchMessagesFromDb(
+  accountId: number,
+  query: string,
+  page: number = 1,
+  maxResults: number = 20,
+): Promise<EmailListDTO> {
+  const offset = (page - 1) * maxResults;
+  const like = `%${query}%`;
+
+  const results = await Email.findAll({
+    where: {
+      accountId,
+      isTrashed: false,
+      [Op.or]: [
+        { fromAddress: { [Op.like]: like } },
+        { toAddress: { [Op.like]: like } },
+        { subject: { [Op.like]: like } },
+        { snippet: { [Op.like]: like } },
+      ],
+    },
+    order: [['date', 'DESC']],
+    offset,
+    limit: maxResults + 1,
+  });
+
+  const hasNextPage = results.length > maxResults;
+  const emails = results.slice(0, maxResults);
+  const nextPageToken = hasNextPage ? String(page + 1) : null;
+
+  return {
+    emails: emails.map((email) => ({
+      id: String(email.id),
+      threadId: email.threadId || '',
+      from: email.fromAddress,
+      to: email.toAddress || '',
+      subject: email.subject || '',
+      snippet: email.snippet || '',
+      date: email.date.toISOString(),
+      isRead: email.isRead,
+      isFavorite: email.isFavorite,
+    })),
+    nextPageToken,
+    resultSizeEstimate: emails.length,
   };
 }
 

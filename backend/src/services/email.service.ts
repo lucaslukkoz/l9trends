@@ -3,7 +3,7 @@ import { SendMessageOptions } from '../providers/email.interface';
 import { getAccountForUser } from './account.service';
 import { getCachedOrFetch, invalidatePattern, invalidateKey } from './cache.service';
 import { enqueueSync } from '../queues/email-sync.queue';
-import { listTrashedFromDb, listSentFromDb, permanentDeleteFromDb, restoreFromTrash, markEmailAsRead, listFavoritesFromDb, toggleFavoriteInDb } from '../providers/imap/messages';
+import { listTrashedFromDb, listSentFromDb, permanentDeleteFromDb, restoreFromTrash, markEmailAsRead, listFavoritesFromDb, toggleFavoriteInDb, searchMessagesFromDb } from '../providers/imap/messages';
 import Email from '../models/Email';
 import { Draft } from '../models';
 
@@ -117,6 +117,12 @@ export async function toggleFavorite(userId: number, accountId: number, emailId:
   await invalidatePattern(`inbox:${accountId}:*`);
   await invalidateKey(`email:${accountId}:${emailId}`);
   return { isFavorite };
+}
+
+export async function searchEmails(userId: number, accountId: number, query: string, pageToken?: string) {
+  const account = await getAccountForUser(userId, accountId);
+  const page = pageToken ? parseInt(pageToken) : 1;
+  return searchMessagesFromDb(account.id, query, page);
 }
 
 export async function getFavorites(userId: number, accountId: number, pageToken?: string) {
