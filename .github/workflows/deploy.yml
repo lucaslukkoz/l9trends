@@ -42,7 +42,7 @@ jobs:
           command_timeout: 10m
           script: |
             set -e
-            cd ~/L9trends
+            cd ~/l9trends
 
             echo "==> Pulling latest code"
             git pull origin main
