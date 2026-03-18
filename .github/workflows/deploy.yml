@@ -40,6 +40,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           command_timeout: 10m
+          envs: DB_PASSWORD,DB_NAME,JWT_EXPIRES_IN,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,EC2_HOST,ENCRYPTION_KEY
           script: |
             set -e
             cd ~/l9trends
@@ -48,28 +49,28 @@ jobs:
             git pull origin main
 
             echo "==> Writing root .env"
-            printf '%s\n' "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" "DB_NAME=${{ secrets.DB_NAME }}" > .env
+            echo "DB_PASSWORD=$DB_PASSWORD" > .env
+            echo "DB_NAME=$DB_NAME" >> .env
 
             echo "==> Writing backend/.env.production"
-            printf '%s\n' \
-              "PORT=3001" \
-              "NODE_ENV=production" \
-              "DB_HOST=mysql" \
-              "DB_PORT=3306" \
-              "DB_NAME=${{ secrets.DB_NAME }}" \
-              "DB_USER=root" \
-              "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" \
-              "REDIS_HOST=redis" \
-              "REDIS_PORT=6379" \
-              "JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}" \
-              "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" \
-              "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" \
-              "GOOGLE_REDIRECT_URI=http://${{ secrets.EC2_HOST }}/api/gmail/callback" \
-              "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}" \
-              "CORS_ORIGIN=http://${{ secrets.EC2_HOST }}" > backend/.env.production
+            echo "PORT=3001" > backend/.env.production
+            echo "NODE_ENV=production" >> backend/.env.production
+            echo "DB_HOST=mysql" >> backend/.env.production
+            echo "DB_PORT=3306" >> backend/.env.production
+            echo "DB_NAME=$DB_NAME" >> backend/.env.production
+            echo "DB_USER=root" >> backend/.env.production
+            echo "DB_PASSWORD=$DB_PASSWORD" >> backend/.env.production
+            echo "REDIS_HOST=redis" >> backend/.env.production
+            echo "REDIS_PORT=6379" >> backend/.env.production
+            echo "JWT_EXPIRES_IN=$JWT_EXPIRES_IN" >> backend/.env.production
+            echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" >> backend/.env.production
+            echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET" >> backend/.env.production
+            echo "GOOGLE_REDIRECT_URI=http://$EC2_HOST/api/gmail/callback" >> backend/.env.production
+            echo "ENCRYPTION_KEY=$ENCRYPTION_KEY" >> backend/.env.production
+            echo "CORS_ORIGIN=http://$EC2_HOST" >> backend/.env.production
 
             echo "==> Writing frontend/.env.production"
-            printf '%s\n' "NEXT_PUBLIC_API_URL=http://${{ secrets.EC2_HOST }}/api" > frontend/.env.production
+            echo "NEXT_PUBLIC_API_URL=http://$EC2_HOST/api" > frontend/.env.production
 
             echo "==> Rebuilding and restarting containers"
             docker compose -f docker-compose.prod.yml up --build -d
