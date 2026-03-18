@@ -105,11 +105,12 @@ export async function syncImapAccount(account: EmailAccount): Promise<void> {
 
         // Create attachment records for new emails
         if (created && parsed.attachments && parsed.attachments.length > 0) {
-          const attachmentRecords = parsed.attachments.map((att) => ({
+          const attachmentRecords = parsed.attachments.map((att, idx) => ({
             emailId: emailRecord.id,
             filename: att.filename || 'unnamed',
             mimeType: att.contentType || 'application/octet-stream',
             size: att.size || 0,
+            contentId: att.contentId || `part-${idx}`,
           }));
 
           await EmailAttachment.bulkCreate(attachmentRecords);

@@ -93,6 +93,23 @@ export async function removeAccount(userId: number, accountId: number) {
   return { message: 'Account removed successfully' };
 }
 
+export async function getSignature(userId: number, accountId: number) {
+  const account = await getAccountForUser(userId, accountId);
+  return {
+    signatureHtml: account.signatureHtml,
+    signatureEnabled: account.signatureEnabled,
+  };
+}
+
+export async function updateSignature(userId: number, accountId: number, signatureHtml: string, enabled: boolean) {
+  const account = await getAccountForUser(userId, accountId);
+  await account.update({ signatureHtml, signatureEnabled: enabled });
+  return {
+    signatureHtml: account.signatureHtml,
+    signatureEnabled: account.signatureEnabled,
+  };
+}
+
 // Helper to get and verify account belongs to user
 export async function getAccountForUser(userId: number, accountId: number): Promise<EmailAccount> {
   const account = await EmailAccount.findOne({ where: { id: accountId, userId } });

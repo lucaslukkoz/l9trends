@@ -5,6 +5,7 @@ import EmailAccount from './EmailAccount';
 import Email from './Email';
 import EmailAttachment from './EmailAttachment';
 import Reminder from './Reminder';
+import Draft from './Draft';
 
 // Legacy: User <-> GmailToken (kept for backward compatibility)
 User.hasOne(GmailToken, { foreignKey: 'userId', onDelete: 'CASCADE' });
@@ -26,4 +27,8 @@ EmailAttachment.belongsTo(Email, { foreignKey: 'emailId', as: 'email' });
 User.hasMany(Reminder, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Reminder.belongsTo(User, { foreignKey: 'userId' });
 
-export { sequelize, User, GmailToken, EmailAccount, Email, EmailAttachment, Reminder };
+// EmailAccount <-> Draft
+EmailAccount.hasMany(Draft, { foreignKey: 'accountId', onDelete: 'CASCADE' });
+Draft.belongsTo(EmailAccount, { foreignKey: 'accountId' });
+
+export { sequelize, User, GmailToken, EmailAccount, Email, EmailAttachment, Reminder, Draft };

@@ -3,7 +3,9 @@ import { SendMessageOptions } from '../providers/email.interface';
 import { getAccountForUser } from './account.service';
 import { getCachedOrFetch, invalidatePattern, invalidateKey } from './cache.service';
 import { enqueueSync } from '../queues/email-sync.queue';
-import { listTrashedFromDb, permanentDeleteFromDb, restoreFromTrash, markEmailAsRead } from '../providers/imap/messages';
+import { listTrashedFromDb, listSentFromDb, permanentDeleteFromDb, restoreFromTrash, markEmailAsRead, listFavoritesFromDb, toggleFavoriteInDb } from '../providers/imap/messages';
+import Email from '../models/Email';
+import { Draft } from '../models';
 
 export async function getInbox(userId: number, accountId: number, pageToken?: string, maxResults?: number) {
   const account = await getAccountForUser(userId, accountId);
@@ -21,12 +23,34 @@ export async function getEmail(userId: number, accountId: number, emailId: strin
   return getCachedOrFetch(cacheKey, 600, () => provider.getMessage(emailId));
 }
 
-export async function sendEmail(userId: number, accountId: number, options: SendMessageOptions) {
+export async function sendEmail(userId: number, accountId: number, options: SendMessageOptions, draftId?: number) {
   const account = await getAccountForUser(userId, accountId);
   const provider = getEmailProvider(account);
 
   const result = await provider.sendMessage(options);
   await invalidatePattern(`inbox:${accountId}:*`);
+
+  // Store sent email in database
+  await Email.create({
+    accountId: account.id,
+    messageUid: result.messageId || `sent-${Date.now()}`,
+    threadId: result.threadId || null,
+    fromAddress: account.email,
+    toAddress: options.to,
+    subject: options.subject,
+    bodyHtml: options.body,
+    snippet: options.body.replace(/<[^>]*>/g, '').substring(0, 200),
+    date: new Date(),
+    isRead: true,
+    folder: 'sent',
+    hasAttachments: !!(options.attachments && options.attachments.length > 0),
+  });
+
+  // Delete draft if sent from a draft
+  if (draftId) {
+    await Draft.destroy({ where: { id: draftId, accountId: account.id } });
+  }
+
   return result;
 }
 
@@ -55,6 +79,12 @@ export async function getTrash(userId: number, accountId: number, pageToken?: st
   return listTrashedFromDb(accountId, page);
 }
 
+export async function getSentEmails(userId: number, accountId: number, pageToken?: string) {
+  const account = await getAccountForUser(userId, accountId);
+  const page = pageToken ? parseInt(pageToken) : 1;
+  return listSentFromDb(account.id, page);
+}
+
 export async function permanentDelete(userId: number, accountId: number, emailId: string) {
   await getAccountForUser(userId, accountId);
   await permanentDeleteFromDb(accountId, emailId);
@@ -73,4 +103,24 @@ export async function markAsRead(userId: number, accountId: number, emailId: str
   await markEmailAsRead(accountId, emailId);
   await invalidateKey(`email:${accountId}:${emailId}`);
   return { message: 'Marcado como lido' };
+}
+
+export async function getAttachment(userId: number, accountId: number, emailId: string, attachmentId: string) {
+  const account = await getAccountForUser(userId, accountId);
+  const provider = getEmailProvider(account);
+  return provider.getAttachment(emailId, attachmentId);
+}
+
+export async function toggleFavorite(userId: number, accountId: number, emailId: string) {
+  await getAccountForUser(userId, accountId);
+  const isFavorite = await toggleFavoriteInDb(accountId, emailId);
+  await invalidatePattern(`inbox:${accountId}:*`);
+  await invalidateKey(`email:${accountId}:${emailId}`);
+  return { isFavorite };
+}
+
+export async function getFavorites(userId: number, accountId: number, pageToken?: string) {
+  const account = await getAccountForUser(userId, accountId);
+  const page = pageToken ? parseInt(pageToken) : 1;
+  return listFavoritesFromDb(account.id, page);
 }

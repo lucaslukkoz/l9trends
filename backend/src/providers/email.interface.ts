@@ -2,10 +2,12 @@ export interface EmailSummaryDTO {
   id: string;
   threadId: string;
   from: string;
+  to?: string;
   subject: string;
   snippet: string;
   date: string;
   isRead: boolean;
+  isFavorite?: boolean;
 }
 
 export interface EmailDetailDTO {
@@ -17,7 +19,8 @@ export interface EmailDetailDTO {
   body: string;
   date: string;
   labels: string[];
-  attachments: { filename: string; mimeType: string; size: number }[];
+  attachments: { id: number; filename: string; mimeType: string; size: number }[];
+  isFavorite?: boolean;
 }
 
 export interface EmailListDTO {
@@ -43,6 +46,12 @@ export interface SendMessageOptions {
   attachments?: EmailAttachmentInput[];
 }
 
+export interface AttachmentContentDTO {
+  content: Buffer;
+  mimeType: string;
+  filename: string;
+}
+
 export interface IEmailProvider {
   listMessages(
     pageToken?: string,
@@ -53,4 +62,5 @@ export interface IEmailProvider {
     options: SendMessageOptions,
   ): Promise<{ messageId: string; threadId: string }>;
   trashMessage(messageId: string): Promise<void>;
+  getAttachment(messageId: string, attachmentId: string): Promise<AttachmentContentDTO>;
 }

@@ -57,7 +57,7 @@ export async function getEmail(req: Request, res: Response, next: NextFunction) 
 
 export async function sendEmail(req: Request, res: Response, next: NextFunction) {
   try {
-    const { to, cc, bcc, subject, body, inReplyTo, references } = req.body;
+    const { to, cc, bcc, subject, body, inReplyTo, references, draftId } = req.body;
 
     // Build attachments from uploaded files
     const files = (req.files as Express.Multer.File[]) || [];
@@ -70,7 +70,8 @@ export async function sendEmail(req: Request, res: Response, next: NextFunction)
     const result = await emailService.sendEmail(
       req.user!.id,
       Number(req.params.accountId),
-      { to, cc, bcc, subject, body, inReplyTo, references, attachments: attachments.length > 0 ? attachments : undefined }
+      { to, cc, bcc, subject, body, inReplyTo, references, attachments: attachments.length > 0 ? attachments : undefined },
+      draftId ? Number(draftId) : undefined
     );
     res.status(201).json(result);
   } catch (err) { next(err); }
@@ -92,6 +93,18 @@ export async function triggerSync(req: Request, res: Response, next: NextFunctio
     const result = await emailService.triggerSync(
       req.user!.id,
       Number(req.params.accountId)
+    );
+    res.json(result);
+  } catch (err) { next(err); }
+}
+
+export async function getSentEmails(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { pageToken } = req.query;
+    const result = await emailService.getSentEmails(
+      req.user!.id,
+      Number(req.params.accountId),
+      pageToken as string | undefined,
     );
     res.json(result);
   } catch (err) { next(err); }
@@ -137,6 +150,67 @@ export async function markEmailRead(req: Request, res: Response, next: NextFunct
       req.user!.id,
       Number(req.params.accountId),
       req.params.emailId
+    );
+    res.json(result);
+  } catch (err) { next(err); }
+}
+
+export async function getAttachment(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await emailService.getAttachment(
+      req.user!.id,
+      Number(req.params.accountId),
+      req.params.emailId,
+      req.params.attachmentId,
+    );
+    const disposition = req.query.preview === 'true' ? 'inline' : 'attachment';
+    res.setHeader('Content-Type', result.mimeType);
+    res.setHeader('Content-Disposition', `${disposition}; filename="${result.filename}"`);
+    res.send(result.content);
+  } catch (err) { next(err); }
+}
+
+export async function toggleFavorite(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await emailService.toggleFavorite(
+      req.user!.id,
+      Number(req.params.accountId),
+      req.params.emailId
+    );
+    res.json(result);
+  } catch (err) { next(err); }
+}
+
+export async function getFavorites(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { pageToken } = req.query;
+    const result = await emailService.getFavorites(
+      req.user!.id,
+      Number(req.params.accountId),
+      pageToken as string | undefined,
+    );
+    res.json(result);
+  } catch (err) { next(err); }
+}
+
+export async function getSignature(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await accountService.getSignature(
+      req.user!.id,
+      Number(req.params.accountId),
+    );
+    res.json(result);
+  } catch (err) { next(err); }
+}
+
+export async function updateSignature(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { signatureHtml, enabled } = req.body;
+    const result = await accountService.updateSignature(
+      req.user!.id,
+      Number(req.params.accountId),
+      signatureHtml,
+      enabled,
     );
     res.json(result);
   } catch (err) { next(err); }

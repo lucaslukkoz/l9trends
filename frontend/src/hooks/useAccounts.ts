@@ -23,5 +23,15 @@ export function useAccounts() {
     await api.post(`/accounts/${accountId}/sync`);
   }, []);
 
-  return { fetchAccounts, addImapAccount, removeAccount, triggerSync };
+  const getSignature = useCallback(async (accountId: number) => {
+    const res = await api.get<{ signatureHtml: string | null; signatureEnabled: boolean }>(`/accounts/${accountId}/signature`);
+    return res.data;
+  }, []);
+
+  const updateSignature = useCallback(async (accountId: number, signatureHtml: string, enabled: boolean) => {
+    const res = await api.put(`/accounts/${accountId}/signature`, { signatureHtml, enabled });
+    return res.data;
+  }, []);
+
+  return { fetchAccounts, addImapAccount, removeAccount, triggerSync, getSignature, updateSignature };
 }

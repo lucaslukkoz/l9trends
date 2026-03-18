@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { EmailDetail } from "@/types/email";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { EmailDetail, Draft } from "@/types/email";
 import { useEmails } from "@/hooks/useEmails";
+import { useAccounts } from "@/hooks/useAccounts";
+import { useDrafts } from "@/hooks/useDrafts";
 
 interface ComposeModalProps {
   mode: "new" | "reply" | "forward";
@@ -10,6 +12,7 @@ interface ComposeModalProps {
   accountId: number;
   onClose: () => void;
   onSent: () => void;
+  initialDraft?: Draft | null;
 }
 
 export default function ComposeModal({
@@ -18,8 +21,16 @@ export default function ComposeModal({
   accountId,
   onClose,
   onSent,
+  initialDraft,
 }: ComposeModalProps) {
   const { sendEmail } = useEmails();
+  const { getSignature } = useAccounts();
+  const { saveDraft, updateDraft } = useDrafts();
+  const [signatureHtml, setSignatureHtml] = useState<string | null>(null);
+  const [signatureIncluded, setSignatureIncluded] = useState(false);
+  const [currentDraftId, setCurrentDraftId] = useState<number | null>(initialDraft?.id || null);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   const buildInitialTo = () => {
     if (mode === "reply" && originalEmail) return originalEmail.from;
@@ -62,18 +73,93 @@ ${originalEmail.body}
     return "";
   };
 
-  const [to, setTo] = useState(buildInitialTo);
-  const [cc, setCc] = useState("");
-  const [bcc, setBcc] = useState("");
-  const [showCc, setShowCc] = useState(false);
-  const [showBcc, setShowBcc] = useState(false);
-  const [subject, setSubject] = useState(buildInitialSubject);
-  const [body, setBody] = useState("");
-  const [quotedBody] = useState(buildInitialBody);
+  const [to, setTo] = useState(initialDraft?.to || buildInitialTo());
+  const [cc, setCc] = useState(initialDraft?.cc || "");
+  const [bcc, setBcc] = useState(initialDraft?.bcc || "");
+  const [showCc, setShowCc] = useState(!!initialDraft?.cc);
+  const [showBcc, setShowBcc] = useState(!!initialDraft?.bcc);
+  const [subject, setSubject] = useState(initialDraft?.subject || buildInitialSubject());
+  const [body, setBody] = useState(initialDraft?.bodyHtml || "");
+  const [quotedBody] = useState(initialDraft ? "" : buildInitialBody());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Set initial content in contentEditable
+  useEffect(() => {
+    if (bodyRef.current && !bodyRef.current.innerHTML) {
+      bodyRef.current.innerHTML = body || "";
+    }
+  }, []);
+
+  // Fetch signature on mount
+  useEffect(() => {
+    getSignature(accountId).then((sig) => {
+      if (sig.signatureEnabled && sig.signatureHtml) {
+        setSignatureHtml(sig.signatureHtml);
+      }
+    }).catch(() => {});
+  }, [accountId, getSignature]);
+
+  // Get current body from contentEditable (excluding signature block)
+  const getBodyContent = useCallback(() => {
+    if (!bodyRef.current) return body;
+    const clone = bodyRef.current.cloneNode(true) as HTMLDivElement;
+    const sigBlock = clone.querySelector('[data-signature="true"]');
+    if (sigBlock) sigBlock.remove();
+    return clone.innerHTML;
+  }, [body]);
+
+  // Handle signature toggle
+  const handleToggleSignature = useCallback(() => {
+    if (!signatureHtml || !bodyRef.current) return;
+
+    if (!signatureIncluded) {
+      // Add signature
+      const sigBlock = document.createElement("div");
+      sigBlock.setAttribute("data-signature", "true");
+      sigBlock.setAttribute("contenteditable", "false");
+      sigBlock.style.marginTop = "16px";
+      sigBlock.style.paddingTop = "8px";
+      sigBlock.style.borderTop = "1px solid #e5e7eb";
+      sigBlock.innerHTML = `<div style="color:#9ca3af;font-size:12px;margin-bottom:4px">--</div>${signatureHtml}`;
+      bodyRef.current.appendChild(sigBlock);
+      setSignatureIncluded(true);
+    } else {
+      // Remove signature
+      const sigBlock = bodyRef.current.querySelector('[data-signature="true"]');
+      if (sigBlock) sigBlock.remove();
+      setSignatureIncluded(false);
+    }
+    // Update body state
+    setBody(getBodyContent());
+  }, [signatureHtml, signatureIncluded, getBodyContent]);
+
+  // Auto-save draft with debounce
+  const handleAutoSave = useCallback(async () => {
+    const currentBody = getBodyContent();
+    const draftData = { to, cc, bcc, subject, bodyHtml: currentBody + quotedBody, inReplyTo: originalEmail?.id, references: originalEmail?.id };
+    try {
+      if (currentDraftId) {
+        await updateDraft(accountId, currentDraftId, draftData);
+      } else {
+        const saved = await saveDraft(accountId, draftData);
+        setCurrentDraftId(saved.id);
+      }
+    } catch {
+      // silent auto-save failure
+    }
+  }, [to, cc, bcc, subject, getBodyContent, quotedBody, accountId, currentDraftId, originalEmail, saveDraft, updateDraft]);
+
+  useEffect(() => {
+    if (!to && !subject && !body) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(handleAutoSave, 5000);
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [to, cc, bcc, subject, body, handleAutoSave]);
 
   const handleAttachFile = () => fileInputRef.current?.click();
 
@@ -98,12 +184,34 @@ ${originalEmail.body}
 
   const labelClasses = "block text-sm font-medium text-[#A5A8AD] mb-1";
 
+  const handleBodyInput = () => {
+    setBody(getBodyContent());
+  };
+
+  const handleSaveDraft = async () => {
+    const currentBody = getBodyContent();
+    const draftData = { to, cc, bcc, subject, bodyHtml: currentBody + quotedBody, inReplyTo: originalEmail?.id, references: originalEmail?.id };
+    try {
+      if (currentDraftId) {
+        await updateDraft(accountId, currentDraftId, draftData);
+      } else {
+        const saved = await saveDraft(accountId, draftData);
+        setCurrentDraftId(saved.id);
+      }
+    } catch {
+      setError("Falha ao salvar rascunho.");
+    }
+  };
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     try {
-      const fullBody = body + quotedBody;
+      // Get full body including signature if present
+      const editorContent = bodyRef.current?.innerHTML || body;
+      const fullBody = editorContent + quotedBody;
       await sendEmail(accountId, {
         to,
         cc: cc || undefined,
@@ -116,6 +224,7 @@ ${originalEmail.body}
               references: originalEmail.id,
             }
           : {}),
+        draftId: currentDraftId || undefined,
       }, attachedFiles.length > 0 ? attachedFiles : undefined);
       onSent();
       onClose();
@@ -222,12 +331,13 @@ ${originalEmail.body}
 
           <div>
             <label className={labelClasses}>Mensagem</label>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={8}
-              className={`${inputClasses} resize-y`}
-              placeholder="Escreva sua mensagem..."
+            <div
+              ref={bodyRef}
+              contentEditable
+              onInput={handleBodyInput}
+              className="w-full rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#532E8E] focus:border-transparent min-h-[200px] max-h-[400px] overflow-y-auto"
+              style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+              data-placeholder="Escreva sua mensagem..."
             />
           </div>
 
@@ -243,8 +353,8 @@ ${originalEmail.body}
             </div>
           )}
 
-          {/* Attachment section */}
-          <div>
+          {/* Attachment & Signature section */}
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={handleAttachFile}
@@ -254,6 +364,27 @@ ${originalEmail.body}
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
               </svg>
               Anexar arquivo
+            </button>
+            <button
+              type="button"
+              onClick={handleToggleSignature}
+              title={!signatureHtml ? "Configure uma assinatura nas Configurações" : (signatureIncluded ? "Clique para remover assinatura" : "Clique para incluir assinatura")}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
+                signatureIncluded && signatureHtml
+                  ? "bg-[#532E8E]/10 border-[#532E8E]/30 text-[#532E8E]"
+                  : !signatureHtml
+                    ? "bg-gray-100 border-gray-300 text-gray-500"
+                    : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {signatureIncluded && signatureHtml ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                )}
+              </svg>
+              Assinatura
             </button>
             <input
               ref={fileInputRef}
@@ -295,6 +426,13 @@ ${originalEmail.body}
               className="rounded-xl bg-gradient-to-r from-[#532E8E] to-[#7B5EA7] px-5 py-2.5 text-sm font-medium text-white hover:from-[#3D2268] hover:to-[#532E8E] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md"
             >
               {loading ? "Enviando..." : "Enviar"}
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveDraft}
+              className="rounded-xl bg-gray-50 px-5 py-2.5 text-sm font-medium text-[#532E8E] hover:bg-gray-100 transition-all duration-200 border border-gray-200"
+            >
+              Salvar Rascunho
             </button>
             <button
               type="button"

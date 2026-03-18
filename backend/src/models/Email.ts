@@ -16,8 +16,10 @@ export interface EmailAttributes {
   isRead: boolean;
   labels: string[] | null;
   hasAttachments: boolean;
+  folder: 'inbox' | 'sent';
   isTrashed: boolean;
   trashedAt: Date | null;
+  isFavorite: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -35,8 +37,10 @@ export interface EmailCreationAttributes
     | 'isRead'
     | 'labels'
     | 'hasAttachments'
+    | 'folder'
     | 'isTrashed'
     | 'trashedAt'
+    | 'isFavorite'
     | 'createdAt'
     | 'updatedAt'
   > {}
@@ -59,8 +63,10 @@ class Email
   declare isRead: boolean;
   declare labels: string[] | null;
   declare hasAttachments: boolean;
+  declare folder: 'inbox' | 'sent';
   declare isTrashed: boolean;
   declare trashedAt: Date | null;
+  declare isFavorite: boolean;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 }
@@ -128,6 +134,11 @@ Email.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    folder: {
+      type: DataTypes.ENUM('inbox', 'sent'),
+      defaultValue: 'inbox',
+      allowNull: false,
+    },
     isTrashed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -136,6 +147,10 @@ Email.init(
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
+    },
+    isFavorite: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
   },
   {
@@ -147,6 +162,12 @@ Email.init(
       {
         unique: true,
         fields: ['account_id', 'message_uid'],
+      },
+      {
+        fields: ['account_id', 'folder'],
+      },
+      {
+        fields: ['account_id', 'is_favorite'],
       },
     ],
   },

@@ -9,6 +9,7 @@ interface EmailListProps {
   onSelectEmail: (email: EmailSummary) => void;
   onOpenEmail: (emailId: string) => void;
   onDeleteEmail?: (emailId: string) => void;
+  onToggleFavorite?: (emailId: string) => void;
 }
 
 export default function EmailList({
@@ -17,6 +18,7 @@ export default function EmailList({
   onSelectEmail,
   onOpenEmail,
   onDeleteEmail,
+  onToggleFavorite,
 }: EmailListProps) {
   if (emails.length === 0) {
     return (
@@ -36,6 +38,7 @@ export default function EmailList({
           onSelect={onSelectEmail}
           onOpen={onOpenEmail}
           onDelete={onDeleteEmail}
+          onToggleFavorite={onToggleFavorite}
         />
       ))}
     </div>

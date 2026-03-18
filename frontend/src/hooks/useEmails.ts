@@ -27,6 +27,7 @@ export function useEmails() {
       if (payload.bcc) formData.append('bcc', payload.bcc);
       if (payload.inReplyTo) formData.append('inReplyTo', payload.inReplyTo);
       if (payload.references) formData.append('references', payload.references);
+      if (payload.draftId) formData.append('draftId', String(payload.draftId));
       files.forEach(file => formData.append('attachments', file));
       const res = await api.post(`/accounts/${accountId}/emails/send`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -47,5 +48,30 @@ export function useEmails() {
     await api.patch(`/accounts/${accountId}/emails/${emailId}/read`);
   }, []);
 
-  return { fetchInbox, fetchEmail, sendEmail, deleteEmail, markAsRead };
+  const fetchSent = useCallback(async (accountId: number, pageToken?: string) => {
+    const params: Record<string, string> = {};
+    if (pageToken) params.pageToken = pageToken;
+    const res = await api.get<EmailListResponse>(`/accounts/${accountId}/sent`, { params });
+    return res.data;
+  }, []);
+
+  const getAttachmentUrl = useCallback((accountId: number, emailId: string, attachmentId: number, preview?: boolean) => {
+    const base = (api.defaults.baseURL || 'http://localhost:3001/api');
+    const url = `${base}/accounts/${accountId}/emails/${emailId}/attachments/${attachmentId}`;
+    return preview ? `${url}?preview=true` : url;
+  }, []);
+
+  const toggleFavorite = useCallback(async (accountId: number, emailId: string) => {
+    const res = await api.patch<{ isFavorite: boolean }>(`/accounts/${accountId}/emails/${emailId}/favorite`);
+    return res.data;
+  }, []);
+
+  const fetchFavorites = useCallback(async (accountId: number, pageToken?: string) => {
+    const params: Record<string, string> = {};
+    if (pageToken) params.pageToken = pageToken;
+    const res = await api.get<EmailListResponse>(`/accounts/${accountId}/favorites`, { params });
+    return res.data;
+  }, []);
+
+  return { fetchInbox, fetchEmail, sendEmail, deleteEmail, markAsRead, fetchSent, toggleFavorite, fetchFavorites, getAttachmentUrl };
 }

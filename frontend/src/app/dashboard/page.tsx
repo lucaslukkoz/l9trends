@@ -14,7 +14,7 @@ import ComposeModal from "@/components/ComposeModal";
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { fetchInbox, fetchEmail, deleteEmail, markAsRead } = useEmails();
+  const { fetchInbox, fetchEmail, deleteEmail, markAsRead, toggleFavorite } = useEmails();
   const { triggerSync } = useAccounts();
   const { accounts, activeAccountId } = useAccountContext();
   const [emails, setEmails] = useState<EmailSummary[]>([]);
@@ -107,16 +107,6 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, [activeAccountId, fetchInbox]);
 
-  // Listen for compose event from Sidebar
-  useEffect(() => {
-    const handleOpenCompose = () => {
-      setComposeEmail(null);
-      setComposeMode('new');
-    };
-    window.addEventListener('openCompose', handleOpenCompose);
-    return () => window.removeEventListener('openCompose', handleOpenCompose);
-  }, []);
-
   // Listen for search event from Navbar
   useEffect(() => {
     const handleNavbarSearch = (e: Event) => {
@@ -203,6 +193,24 @@ export default function DashboardPage() {
     setComposeMode(null);
     setComposeEmail(null);
     loadInbox();
+  };
+
+  const handleToggleFavorite = async (emailId: string) => {
+    if (!activeAccountId) return;
+    // Optimistic update
+    setEmails(prev => prev.map(e => e.id === emailId ? { ...e, isFavorite: !e.isFavorite } : e));
+    if (selectedEmail && selectedEmail.id === emailId) {
+      setSelectedEmail(prev => prev ? { ...prev, isFavorite: !prev.isFavorite } : prev);
+    }
+    try {
+      await toggleFavorite(activeAccountId, emailId);
+    } catch {
+      // Revert on error
+      setEmails(prev => prev.map(e => e.id === emailId ? { ...e, isFavorite: !e.isFavorite } : e));
+      if (selectedEmail && selectedEmail.id === emailId) {
+        setSelectedEmail(prev => prev ? { ...prev, isFavorite: !prev.isFavorite } : prev);
+      }
+    }
   };
 
   const handleSync = async () => {
@@ -296,6 +304,7 @@ export default function DashboardPage() {
             onSelectEmail={handleSelectEmail}
             onOpenEmail={handleOpenEmail}
             onDeleteEmail={handleDeleteEmail}
+            onToggleFavorite={handleToggleFavorite}
           />
         </div>
         {nextPageToken && (
@@ -328,6 +337,8 @@ export default function DashboardPage() {
         onDelete={handleDeleteEmail}
         onReply={handleReply}
         onForward={handleForward}
+        onToggleFavorite={handleToggleFavorite}
+        accountId={activeAccountId || undefined}
       />
 
       {composeMode && activeAccountId && (

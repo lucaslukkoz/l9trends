@@ -4,12 +4,14 @@ import {
   EmailListDTO,
   EmailDetailDTO,
   SendMessageOptions,
+  AttachmentContentDTO,
 } from '../email.interface';
 import {
   listMessagesFromDb,
   getMessageFromDb,
   sendMessageSmtp,
   trashMessageImap,
+  getAttachmentFromImap,
 } from './messages';
 
 export class ImapAdapter implements IEmailProvider {
@@ -39,5 +41,9 @@ export class ImapAdapter implements IEmailProvider {
 
   async trashMessage(messageId: string): Promise<void> {
     return trashMessageImap(this.account, messageId);
+  }
+
+  async getAttachment(messageId: string, attachmentId: string): Promise<AttachmentContentDTO> {
+    return getAttachmentFromImap(this.account, messageId, attachmentId);
   }
 }

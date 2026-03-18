@@ -25,6 +25,9 @@ export interface EmailAccountAttributes {
   lastSyncAt: Date | null;
   syncStatus: 'idle' | 'syncing' | 'error';
   syncError: string | null;
+  // Signature
+  signatureHtml: string | null;
+  signatureEnabled: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -49,6 +52,8 @@ export interface EmailAccountCreationAttributes
     | 'lastSyncAt'
     | 'syncStatus'
     | 'syncError'
+    | 'signatureHtml'
+    | 'signatureEnabled'
     | 'createdAt'
     | 'updatedAt'
   > {}
@@ -77,6 +82,8 @@ class EmailAccount
   declare lastSyncAt: Date | null;
   declare syncStatus: 'idle' | 'syncing' | 'error';
   declare syncError: string | null;
+  declare signatureHtml: string | null;
+  declare signatureEnabled: boolean;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 }
@@ -170,6 +177,15 @@ EmailAccount.init(
     syncError: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    signatureHtml: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
+    },
+    signatureEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
   },
   {
