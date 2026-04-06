@@ -4,3 +4,4 @@
 backend/.env.production
 frontend/.env.production
 *.pem
+*.md
